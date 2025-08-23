@@ -1,19 +1,17 @@
-#Breadth-First Search
+#A* Search
 
-import time
-from collections import deque
+import heapq
 from data import list_tests, get_test_by_index
-from allItem import StateKey, State, successors, is_goal_key, run_single, run_all
+from allItem import StateKey, State, successors, is_goal_key, h, run_single, run_all
 
-def bfs(start_key: StateKey, metr):
-    q = deque([State(start_key.m_left, start_key.c_left, start_key.boat)])
-    visited = set()
-    while q:
-        metr.track_frontier(len(q))
-        u = q.popleft()
-        if u.key in visited:
-            continue
-        visited.add(u.key)
+def astar(start_key: StateKey, metr):
+    start = State(start_key.m_left, start_key.c_left, start_key.boat)
+    openh, tie = [], 0
+    gbest = {start.key: 0}
+    heapq.heappush(openh, (h(start.key), 0, tie, start))  # (f, g, tie, node)
+    while openh:
+        metr.track_frontier(len(openh))
+        _, _, _, u = heapq.heappop(openh)
         metr.bump()
         if is_goal_key(u.key):
             path = []
@@ -23,13 +21,16 @@ def bfs(start_key: StateKey, metr):
                 s = s.parent
             return list(reversed(path))
         for v in successors(u):
-            if v.key not in visited:
-                q.append(v)
+            g2 = u.g + 1
+            if g2 < gbest.get(v.key, 10**9):
+                gbest[v.key] = g2
+                tie += 1
+                heapq.heappush(openh, (g2 + h(v.key), g2, tie, v))
     return []
 
 def main():
-    algo_name = "BFS"
-    solver_fn = bfs
+    algo_name = "A*"
+    solver_fn = astar
 
     print(f"=== Missionaries & Cannibals — {algo_name} ===")
     while True:

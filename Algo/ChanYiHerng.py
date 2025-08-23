@@ -1,16 +1,17 @@
-#Breadth-First Search
+# Greedy Best-First Search
 
-import time
-from collections import deque
+import heapq
 from data import list_tests, get_test_by_index
-from allItem import StateKey, State, successors, is_goal_key, run_single, run_all
+from allItem import StateKey, State, successors, is_goal_key, h, run_single, run_all
 
-def bfs(start_key: StateKey, metr):
-    q = deque([State(start_key.m_left, start_key.c_left, start_key.boat)])
+def greedy(start_key: StateKey, metr):
+    start = State(start_key.m_left, start_key.c_left, start_key.boat)
+    pq, tie = [], 0
+    heapq.heappush(pq, (h(start.key), tie, start))
     visited = set()
-    while q:
-        metr.track_frontier(len(q))
-        u = q.popleft()
+    while pq:
+        metr.track_frontier(len(pq))
+        _, _, u = heapq.heappop(pq)
         if u.key in visited:
             continue
         visited.add(u.key)
@@ -24,12 +25,13 @@ def bfs(start_key: StateKey, metr):
             return list(reversed(path))
         for v in successors(u):
             if v.key not in visited:
-                q.append(v)
+                tie += 1
+                heapq.heappush(pq, (h(v.key), tie, v))
     return []
 
 def main():
-    algo_name = "BFS"
-    solver_fn = bfs
+    algo_name = "Greedy Best-First"
+    solver_fn = greedy
 
     print(f"=== Missionaries & Cannibals — {algo_name} ===")
     while True:

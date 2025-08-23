@@ -1,16 +1,14 @@
-#Breadth-First Search
+#Depth-First Search
 
-import time
-from collections import deque
 from data import list_tests, get_test_by_index
 from allItem import StateKey, State, successors, is_goal_key, run_single, run_all
 
-def bfs(start_key: StateKey, metr):
-    q = deque([State(start_key.m_left, start_key.c_left, start_key.boat)])
+def dfs(start_key: StateKey, metr):
+    stack = [State(start_key.m_left, start_key.c_left, start_key.boat)]
     visited = set()
-    while q:
-        metr.track_frontier(len(q))
-        u = q.popleft()
+    while stack:
+        metr.track_frontier(len(stack))
+        u = stack.pop()
         if u.key in visited:
             continue
         visited.add(u.key)
@@ -22,14 +20,15 @@ def bfs(start_key: StateKey, metr):
                 path.append(s.key)
                 s = s.parent
             return list(reversed(path))
-        for v in successors(u):
+        succ = successors(u)
+        for v in reversed(succ):  # LIFO
             if v.key not in visited:
-                q.append(v)
+                stack.append(v)
     return []
 
 def main():
-    algo_name = "BFS"
-    solver_fn = bfs
+    algo_name = "DFS"
+    solver_fn = dfs
 
     print(f"=== Missionaries & Cannibals — {algo_name} ===")
     while True:
