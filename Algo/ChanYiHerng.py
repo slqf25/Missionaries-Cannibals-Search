@@ -2,7 +2,7 @@
 
 import heapq
 from data import list_tests, get_test_by_index
-from allItem import StateKey, State, successors, is_goal_key, h, run_single, run_all
+from allItem import StateKey, State, successors, is_goal_key, h, run_single, run_all_extended
 
 def greedy(start_key: StateKey, metr):
     start = State(start_key.m_left, start_key.c_left, start_key.boat)
@@ -31,21 +31,18 @@ def greedy(start_key: StateKey, metr):
 
 def main():
     algo_name = "Greedy Best-First"
-    solver_fn = greedy
-
     print(f"=== Missionaries & Cannibals — {algo_name} ===")
     while True:
         print("\nMenu:")
-        print(" 1) Visualize ONE test case")
-        print(" 2) Run ONE test case (no animation)")
-        print(" 3) Run ALL test cases and show comparison table")
-        print(" 0) Exit")
+        print(" 1. Select 1 data set to test")
+        print(" 2. Overall report generation")
+        print(" 0. Exit")
         choice = input("Select: ").strip()
 
         if choice == "0":
             print("Goodbye.")
             break
-        elif choice in ("1", "2"):
+        elif choice == "1":
             print("\nAvailable test cases:")
             list_tests()
             try:
@@ -55,9 +52,9 @@ def main():
                 print("Invalid selection.\n")
                 continue
             start_key = StateKey(cfg[0], cfg[1], cfg[2])
-            run_single(solver_fn, start_key, algo_name, animate=(choice == "1"))
-        elif choice == "3":
-            run_all(solver_fn, algo_name)
+            run_single(greedy, start_key, algo_name, animate=True, case_idx=idx, case_name=case_name)
+        elif choice == "2":
+            run_all_extended(greedy, algo_name)
         else:
             print("Invalid selection.\n")
 

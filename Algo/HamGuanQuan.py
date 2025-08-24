@@ -2,11 +2,11 @@
 
 import random, math
 from data import list_tests, get_test_by_index
-from allItem import StateKey, State, successors, is_goal_key, run_single, run_all
+from allItem import StateKey, State, successors, is_goal_key, run_single, run_all_extended
 
 SA_MAX_ITERS = 50000
 SA_T_START, SA_T_END = 5.0, 0.002
-SA_REPEATS = 20
+SA_REPEATS_DEFAULT = 20
 
 def sa_cost(k: StateKey):
     return k.m_left + k.c_left + (0 if k.boat == 'R' else 1)
@@ -46,10 +46,10 @@ def sa_single(start_key: StateKey, metr):
     path = list(reversed(path))
     return path if path and is_goal_key(path[-1]) else []
 
-def sa_best_of_repeats(start_key: StateKey, metr):
+def sa_best_of_repeats(start_key: StateKey, metr, repeats:int=1):
     random.seed()
     best = []
-    for _ in range(SA_REPEATS):
+    for _ in range(repeats):
         path = sa_single(start_key, metr)
         if path and is_goal_key(path[-1]):
             return path
@@ -59,21 +59,18 @@ def sa_best_of_repeats(start_key: StateKey, metr):
 
 def main():
     algo_name = "Simulated Annealing"
-    solver_fn = sa_best_of_repeats
-
     print(f"=== Missionaries & Cannibals — {algo_name} ===")
     while True:
         print("\nMenu:")
-        print(" 1) Visualize ONE test case")
-        print(" 2) Run ONE test case (no animation)")
-        print(" 3) Run ALL test cases and show comparison table")
-        print(" 0) Exit")
+        print(" 1. Select 1 data set to test")
+        print(" 2. Overall report generation")
+        print(" 0. Exit")
         choice = input("Select: ").strip()
 
         if choice == "0":
             print("Goodbye.")
             break
-        elif choice in ("1", "2"):
+        elif choice == "1":
             print("\nAvailable test cases:")
             list_tests()
             try:
@@ -83,9 +80,11 @@ def main():
                 print("Invalid selection.\n")
                 continue
             start_key = StateKey(cfg[0], cfg[1], cfg[2])
-            run_single(solver_fn, start_key, algo_name, animate=(choice == "1"))
-        elif choice == "3":
-            run_all(solver_fn, algo_name)
+            def solver(start_key, metr): return sa_single(start_key, metr)
+            run_single(solver, start_key, algo_name, animate=True, case_idx=idx, case_name=case_name)
+        elif choice == "2":
+            def solver_repeat(start_key, metr): return sa_best_of_repeats(start_key, metr, repeats=SA_REPEATS_DEFAULT)
+            run_all_extended(solver_repeat, algo_name, sa_repeats=SA_REPEATS_DEFAULT)
         else:
             print("Invalid selection.\n")
 

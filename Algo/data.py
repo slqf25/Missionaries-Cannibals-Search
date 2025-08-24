@@ -1,10 +1,7 @@
-# Shared test cases for Missionaries & Cannibals
-
 TOTAL_M = 3
 TOTAL_C = 3
 BOAT_CAPACITY = 2
 
-# Named test cases (you can rename or add more if needed)
 TESTS = [
     ("Classic default",     (3, 3, 'L')),
     ("Left heavy M",        (3, 2, 'L')),
