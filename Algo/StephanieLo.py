@@ -1,61 +1,48 @@
 #Breadth-First Search
 
-# bfs_mc.py
 from collections import deque
-from data import list_tests, get_test_by_index
-from allItem import StateKey, State, successors, is_goal_key, run_single, run_all_extended
+from allItem import StateKey, State, successors, is_goal_key, Metrics, run_single, run_all_extended, optimal_length_baseline
+from data import TEST_CASES
 
-def bfs(start_key: StateKey, metr):
-    q = deque([State(start_key.m_left, start_key.c_left, start_key.boat)])
-    visited = set()
+ALGO_NAME = "BFS"
+
+def bfs_solver(start: StateKey, metr: Metrics):
+    q = deque()
+    q.append(State(start, 0, None, None))
+    visited = set([start])
     while q:
         metr.track_frontier(len(q))
         u = q.popleft()
-        if u.key in visited:
-            continue
-        visited.add(u.key)
         metr.bump()
         if is_goal_key(u.key):
-            path = []
-            s = u
-            while s:
-                path.append(s.key)
-                s = s.parent
-            return list(reversed(path))
-        for v in successors(u):
+            return u
+        for v in successors(u, order="deterministic"):
             if v.key not in visited:
+                visited.add(v.key)
                 q.append(v)
-    return []
+    return None
 
 def main():
-    algo_name = "BFS"
-    print(f"=== Missionaries & Cannibals — {algo_name} ===")
+    # precompute optimal lengths for gaps
+    optimal = {name: optimal_length_baseline(s) for name,s in TEST_CASES}
     while True:
-        print("\nMenu:")
-        print(" 1. Select 1 data set to test")
-        print(" 2. Overall report generation")
-        print(" 0. Exit")
-        choice = input("Select: ").strip()
-
-        if choice == "0":
-            print("Goodbye.")
+        print(f"\n=== {ALGO_NAME} Menu ===")
+        print("1) Choose ONE test case → animate + show metrics")
+        print("2) Run ALL test cases (no animation) → summary table")
+        print("0) Exit")
+        sel = input("Select: ").strip()
+        if sel == "1":
+            for i,(name, s) in enumerate(TEST_CASES,1):
+                print(f"{i}) {name}: start={s}")
+            idx = int(input("Pick one: ").strip()) - 1
+            name, start = TEST_CASES[idx]
+            run_single(bfs_solver, start, ALGO_NAME, animate=True, anim_speed=0.6)
+        elif sel == "2":
+            run_all_extended(bfs_solver, TEST_CASES, algo_name=ALGO_NAME, optimal_by_case=optimal, repeats=1)
+        elif sel == "0":
             break
-        elif choice == "1":
-            print("\nAvailable test cases:")
-            list_tests()
-            try:
-                idx = int(input("Pick a case (1-10): "))
-                case_name, cfg = get_test_by_index(idx)
-            except Exception:
-                print("Invalid selection.\n")
-                continue
-            start_key = StateKey(cfg[0], cfg[1], cfg[2])
-            run_single(bfs, start_key, algo_name, animate=True, case_idx=idx, case_name=case_name)
-        elif choice == "2":
-            run_all_extended(bfs, algo_name)
         else:
-            print("Invalid selection.\n")
+            print("Invalid selection.")
 
 if __name__ == "__main__":
     main()
-

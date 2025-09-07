@@ -1,92 +1,73 @@
 #simulated Annealing
 
-import random, math
-from data import list_tests, get_test_by_index
-from allItem import StateKey, State, successors, is_goal_key, run_single, run_all_extended
+import random
+from allItem import StateKey, State, successors, is_goal_key, Metrics, run_single, run_all_extended, bfs_optimal_length
+from data import TEST_CASES
 
-SA_MAX_ITERS = 50000
-SA_T_START, SA_T_END = 5.0, 0.002
-SA_REPEATS_DEFAULT = 20
+ALGO_NAME = "Simulated Annealing "
 
-def sa_cost(k: StateKey):
-    return k.m_left + k.c_left + (0 if k.boat == 'R' else 1)
+def energy(k: StateKey) -> int:
+    # remaining workload + small boat penalty to encourage boat on right
+    return (k.m_left + k.c_left) + (0 if k.boat == 'R' else 1)
 
-def schedule(tfrac):
-    return SA_T_START * ((SA_T_END / SA_T_START) ** tfrac)
+def accept_worse(deltaE: int, T: float) -> bool:
+    # Linear-decay acceptance: P = max(0, 1 - deltaE / T)
+    if T <= 1e-9:
+        return False
+    if deltaE <= 0:
+        return True
+    P = max(0.0, 1.0 - (deltaE / T))
+    return random.random() < P
 
-def sa_single(start_key: StateKey, metr):
-    cur = State(start_key.m_left, start_key.c_left, start_key.boat)
+def sa_solver(start: StateKey, metr: Metrics, *, T0: float = 10.0, Tmin: float = 0.1, alpha: float = 0.995, k_max: int = 50000):
+    cur = State(start, 0, None, None)
     best = cur
-    for it in range(1, SA_MAX_ITERS + 1):
+    T = T0
+    k = 0
+    while k < k_max and T > Tmin:
+        metr.track_frontier(1)  # SA keeps O(1) states
         metr.bump()
         if is_goal_key(cur.key):
-            path = []
-            s = cur
-            while s:
-                path.append(s.key)
-                s = s.parent
-            return list(reversed(path))
-        T = schedule(it / SA_MAX_ITERS)
-        nbrs = successors(cur)
-        metr.track_frontier(len(nbrs))
+            return cur
+        nbrs = successors(cur, order="random")
         if not nbrs:
-            cur = State(start_key.m_left, start_key.c_left, start_key.boat)
+            # small reheat
+            T = min(T0, T * 1.2)
+            k += 1
             continue
         nxt = random.choice(nbrs)
-        d = sa_cost(nxt.key) - sa_cost(cur.key)
-        if d <= 0 or random.random() < math.exp(-d / max(T, 1e-12)):
+        dE = energy(nxt.key) - energy(cur.key)
+        if dE <= 0 or accept_worse(dE, T):
             cur = nxt
-        if sa_cost(cur.key) < sa_cost(best.key):
-            best = cur
-    path = []
-    s = best
-    while s:
-        path.append(s.key)
-        s = s.parent
-    path = list(reversed(path))
-    return path if path and is_goal_key(path[-1]) else []
-
-def sa_best_of_repeats(start_key: StateKey, metr, repeats:int=1):
-    random.seed()
-    best = []
-    for _ in range(repeats):
-        path = sa_single(start_key, metr)
-        if path and is_goal_key(path[-1]):
-            return path
-        if len(path) > len(best):
-            best = path
-    return best if best and is_goal_key(best[-1]) else []
+            if energy(cur.key) < energy(best.key):
+                best = cur
+        T *= alpha
+        k += 1
+    if is_goal_key(best.key):
+        return best
+    return None
 
 def main():
-    algo_name = "Simulated Annealing"
-    print(f"=== Missionaries & Cannibals — {algo_name} ===")
+    optimal = {name: bfs_optimal_length(s) for name,s in TEST_CASES}
     while True:
-        print("\nMenu:")
-        print(" 1. Select 1 data set to test")
-        print(" 2. Overall report generation")
-        print(" 0. Exit")
-        choice = input("Select: ").strip()
-
-        if choice == "0":
-            print("Goodbye.")
+        print(f"\n=== {ALGO_NAME} Menu ===")
+        print("1) Choose ONE test case → animate + show metrics")
+        print("2) Run ALL test cases (no animation) → summary table (best-of-20)")
+        print("0) Exit")
+        sel = input("Select: ").strip()
+        if sel == "1":
+            for i,(name, s) in enumerate(TEST_CASES,1):
+                print(f"{i}) {name}: start={s}")
+            idx = int(input("Pick one: ").strip()) - 1
+            name, start = TEST_CASES[idx]
+            run_single(lambda st, m: sa_solver(st, m), start, ALGO_NAME, animate=True, anim_speed=0.6)
+        elif sel == "2":
+            # SA 重复 20 次以体现成功率与最优差距更可靠
+            run_all_extended(lambda st, m: sa_solver(st, m), TEST_CASES, algo_name=ALGO_NAME, optimal_by_case=optimal, repeats=20)
+        elif sel == "0":
             break
-        elif choice == "1":
-            print("\nAvailable test cases:")
-            list_tests()
-            try:
-                idx = int(input("Pick a case (1-10): "))
-                case_name, cfg = get_test_by_index(idx)
-            except Exception:
-                print("Invalid selection.\n")
-                continue
-            start_key = StateKey(cfg[0], cfg[1], cfg[2])
-            def solver(start_key, metr): return sa_single(start_key, metr)
-            run_single(solver, start_key, algo_name, animate=True, case_idx=idx, case_name=case_name)
-        elif choice == "2":
-            def solver_repeat(start_key, metr): return sa_best_of_repeats(start_key, metr, repeats=SA_REPEATS_DEFAULT)
-            run_all_extended(solver_repeat, algo_name, sa_repeats=SA_REPEATS_DEFAULT)
         else:
-            print("Invalid selection.\n")
+            print("Invalid selection.")
 
 if __name__ == "__main__":
     main()

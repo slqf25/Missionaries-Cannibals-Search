@@ -1,61 +1,56 @@
 #A* Search
 
 import heapq
-from data import list_tests, get_test_by_index
-from allItem import StateKey, State, successors, is_goal_key, h, run_single, run_all_extended
+from allItem import StateKey, State, successors, is_goal_key, Metrics, heuristic_trips_remaining, run_single, run_all_extended, bfs_optimal_length
+from data import TEST_CASES
 
-def astar(start_key: StateKey, metr):
-    start = State(start_key.m_left, start_key.c_left, start_key.boat)
-    openh, tie = [], 0
-    gbest = {start.key: 0}
-    heapq.heappush(openh, (h(start.key), 0, tie, start))  # (f, g, tie, node)
+ALGO_NAME = "A*"
+
+def astar_solver(start: StateKey, metr: Metrics):
+    tie = 0
+    openh = []
+    start_state = State(start, 0, None, None)
+    heapq.heappush(openh, (heuristic_trips_remaining(start), 0, tie, start_state))
+    gbest = {start: 0}
+    closed = set()
     while openh:
         metr.track_frontier(len(openh))
-        _, _, _, u = heapq.heappop(openh)
+        f, g, _, u = heapq.heappop(openh)
+        if u.key in closed:
+            continue
+        closed.add(u.key)
         metr.bump()
         if is_goal_key(u.key):
-            path = []
-            s = u
-            while s:
-                path.append(s.key)
-                s = s.parent
-            return list(reversed(path))
-        for v in successors(u):
-            g2 = u.g + 1
-            if g2 < gbest.get(v.key, 10**9):
-                gbest[v.key] = g2
+            return u
+        for v in successors(u, order="deterministic"):
+            gv = v.g
+            if (v.key not in gbest) or (gv < gbest[v.key]):
+                gbest[v.key] = gv
                 tie += 1
-                heapq.heappush(openh, (g2 + h(v.key), g2, tie, v))
-    return []
+                fv = gv + heuristic_trips_remaining(v.key)
+                heapq.heappush(openh, (fv, gv, tie, v))
+    return None
 
 def main():
-    algo_name = "A*"
-    print(f"=== Missionaries & Cannibals — {algo_name} ===")
+    optimal = {name: bfs_optimal_length(s) for name,s in TEST_CASES}
     while True:
-        print("\nMenu:")
-        print(" 1. Select 1 data set to test")
-        print(" 2. Overall report generation")
-        print(" 0. Exit")
-        choice = input("Select: ").strip()
-
-        if choice == "0":
-            print("Goodbye.")
+        print(f"\n=== {ALGO_NAME} Menu ===")
+        print("1) Choose ONE test case → animate + show metrics")
+        print("2) Run ALL test cases (no animation) → summary table")
+        print("0) Exit")
+        sel = input("Select: ").strip()
+        if sel == "1":
+            for i,(name, s) in enumerate(TEST_CASES,1):
+                print(f"{i}) {name}: start={s}")
+            idx = int(input("Pick one: ").strip()) - 1
+            name, start = TEST_CASES[idx]
+            run_single(astar_solver, start, ALGO_NAME, animate=True, anim_speed=0.6)
+        elif sel == "2":
+            run_all_extended(astar_solver, TEST_CASES, algo_name=ALGO_NAME, optimal_by_case=optimal, repeats=1)
+        elif sel == "0":
             break
-        elif choice == "1":
-            print("\nAvailable test cases:")
-            list_tests()
-            try:
-                idx = int(input("Pick a case (1-10): "))
-                case_name, cfg = get_test_by_index(idx)
-            except Exception:
-                print("Invalid selection.\n")
-                continue
-            start_key = StateKey(cfg[0], cfg[1], cfg[2])
-            run_single(astar, start_key, algo_name, animate=True, case_idx=idx, case_name=case_name)
-        elif choice == "2":
-            run_all_extended(astar, algo_name)
         else:
-            print("Invalid selection.\n")
+            print("Invalid selection.")
 
 if __name__ == "__main__":
     main()

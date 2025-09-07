@@ -1,10 +1,12 @@
 #Depth-First Search
 
-from data import list_tests, get_test_by_index
-from allItem import StateKey, State, successors, is_goal_key, run_single, run_all_extended
+from allItem import StateKey, State, successors, is_goal_key, Metrics, run_single, run_all_extended, bfs_optimal_length
+from data import TEST_CASES
 
-def dfs(start_key: StateKey, metr):
-    stack = [State(start_key.m_left, start_key.c_left, start_key.boat)]
+ALGO_NAME = "DFS"
+
+def dfs_solver(start: StateKey, metr: Metrics):
+    stack = [State(start, 0, None, None)]
     visited = set()
     while stack:
         metr.track_frontier(len(stack))
@@ -14,46 +16,33 @@ def dfs(start_key: StateKey, metr):
         visited.add(u.key)
         metr.bump()
         if is_goal_key(u.key):
-            path = []
-            s = u
-            while s:
-                path.append(s.key)
-                s = s.parent
-            return list(reversed(path))
-        succ = successors(u)
-        for v in reversed(succ):
+            return u
+        # randomize successors to reveal non-optimality occasionally
+        for v in successors(u, order="random"):
             if v.key not in visited:
                 stack.append(v)
-    return []
+    return None
 
 def main():
-    algo_name = "DFS"
-    print(f"=== Missionaries & Cannibals — {algo_name} ===")
+    optimal = {name: bfs_optimal_length(s) for name,s in TEST_CASES}
     while True:
-        print("\nMenu:")
-        print(" 1. Select 1 data set to test")
-        print(" 2. Overall report generation")
-        print(" 0. Exit")
-        choice = input("Select: ").strip()
-
-        if choice == "0":
-            print("Goodbye.")
+        print(f"\n=== {ALGO_NAME} Menu ===")
+        print("1) Choose ONE test case → animate + show metrics")
+        print("2) Run ALL test cases (no animation) → summary table")
+        print("0) Exit")
+        sel = input("Select: ").strip()
+        if sel == "1":
+            for i,(name, s) in enumerate(TEST_CASES,1):
+                print(f"{i}) {name}: start={s}")
+            idx = int(input("Pick one: ").strip()) - 1
+            name, start = TEST_CASES[idx]
+            run_single(dfs_solver, start, ALGO_NAME, animate=True, anim_speed=0.6)
+        elif sel == "2":
+            run_all_extended(dfs_solver, TEST_CASES, algo_name=ALGO_NAME, optimal_by_case=optimal, repeats=1)
+        elif sel == "0":
             break
-        elif choice == "1":
-            print("\nAvailable test cases:")
-            list_tests()
-            try:
-                idx = int(input("Pick a case (1-10): "))
-                case_name, cfg = get_test_by_index(idx)
-            except Exception:
-                print("Invalid selection.\n")
-                continue
-            start_key = StateKey(cfg[0], cfg[1], cfg[2])
-            run_single(dfs, start_key, algo_name, animate=True, case_idx=idx, case_name=case_name)
-        elif choice == "2":
-            run_all_extended(dfs, algo_name)
         else:
-            print("Invalid selection.\n")
+            print("Invalid selection.")
 
 if __name__ == "__main__":
     main()
